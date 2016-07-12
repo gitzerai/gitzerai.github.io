@@ -1,0 +1,102 @@
+﻿body 
+{
+    margin:0;
+    padding:0;
+    background-color:white;    
+    overflow:hidden;
+}
+
+.main
+{
+    
+}
+
+.mapedit
+{
+    min-width:1300px;
+}
+
+.center
+{
+     width:928px;    
+     height:672px; 
+     margin:0 auto;
+     background-image:url('../img/bg/bg.png');
+}
+
+.clear
+{
+    clear:both;
+}
+
+.canvas-surroundings
+{
+    padding:32px;
+    float:right;
+}
+
+.canvas-wrapper
+{
+    z-index:1;
+}
+
+.player-surroundings
+{
+    float:left;
+    padding-top:32px;
+    padding-left:32px;
+    padding-bottom:32px;
+    width:224px;
+}
+
+.player-wrapper
+{
+    
+}
+
+.canvas-layer
+{
+    position:absolute;
+    top:32px;
+    z-index:5;
+    -moz-box-shadow:    inset 0 0 20px #000000;
+   -webkit-box-shadow: inset 0 0 20px #000000;
+   box-shadow:         inset 0 0 20px #000000;
+    border:1px solid black;
+}
+
+@font-face {
+    font-family: 'BleedingCowboys';
+    src: url('Bleeding Cowboys.ttf');
+}​
+
+#map_canvas
+{
+    float:left;
+    width:640px;    
+}
+
+#map_output
+{
+    float:right;
+    width:610px; 
+    border:1px solid black;   
+}
+
+#map
+{
+    border:1px solid black;
+    width:610px;
+}
+
+#left
+{
+    float:left;
+    width:530px;
+}
+
+#right
+{
+    float:right;
+    width:90px;
+}
