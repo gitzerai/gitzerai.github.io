@@ -6,21 +6,19 @@
 </head>
 <body>
     <div class="mapedit">
-    <div id="map_canvas">
-        
-    </div>
-    <div id="map_output">
-        <div id="map">
+        <div id="map_canvas"></div>
+        <div id="map_output">
+            <div id="map">
 
+            </div>
+            <div id="left">
+                <textarea id="mapText" readonly="readonly" style="width:530px; height:100px;"></textarea>
+                <input type="button" value="Export" onclick="javascript:exportmap();"/>
+            </div>
+            <div id="right">
+                <span>Brush:</span>
+            </div>
         </div>
-        <div id="left">
-            <textarea id="mapText" readonly="readonly" style="width:530px; height:100px;"></textarea>
-            <input type="button" value="Export" onclick="javascript:exportmap();"/>
-        </div>
-        <div id="right">
-            <span>Štětec:</span>
-        </div>
-    </div>
 
     <script src="js/mapedit.js" type="text/javascript"></script>
     <div style="clear:both;"></div>

@@ -1,14 +1,18 @@
-﻿body 
+﻿body
 {
     margin:0;
     padding:0;
-    background-color:white;    
+    background-color:white;
     overflow:hidden;
 }
 
 .main
 {
-    
+
+}
+
+#map_canvas {
+  float: left;
 }
 
 .mapedit
@@ -18,8 +22,8 @@
 
 .center
 {
-     width:928px;    
-     height:672px; 
+     width:928px;
+     height:672px;
      margin:0 auto;
      background-image:url('../img/bg/bg.png');
 }
@@ -51,7 +55,7 @@
 
 .player-wrapper
 {
-    
+
 }
 
 .canvas-layer
@@ -73,14 +77,14 @@
 #map_canvas
 {
     float:left;
-    width:640px;    
+    width:640px;
 }
 
 #map_output
 {
     float:right;
-    width:610px; 
-    border:1px solid black;   
+    width:610px;
+    border:1px solid black;
 }
 
 #map
