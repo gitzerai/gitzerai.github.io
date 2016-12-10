@@ -50,7 +50,7 @@ var getServerStatus = function (id, type, url) {
         timeout: 5000,
 complete: function (data, xhr) {
 $('#' + id + ' .' + type).html(getStatusLabel(data.status));
-});
+}});
 }
 
 var healthCheck = function () {
