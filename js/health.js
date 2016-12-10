@@ -26,21 +26,19 @@ var getLabel = function (type, label) {
 }
 
 var getStatusLabel = function (statusCode) {
-     statusCode = '&nbsp;';
+     label = '&nbsp;';
+	type = 'danger';
 	if (statusCode >= 200 && statusCode < 300) {
-		return getLabel('success', statusCode);
+		type = 'success';
 	}
 	if (statusCode >= 300 && statusCode < 400) {
-		return getLabel('info', statusCode);
+		type = 'info';
 	}
 	if (statusCode >= 400 && statusCode < 500) {
-		return getLabel('warning', statusCode);
+		type = 'warning';
 	}
-	if (!statusCode) {
-		statusCode = 'TIMEOUT';
-	}
-	return getLabel('danger', statusCode);
-}
+	return getLabel(type, label);
+};
 
 var getServerStatus = function (id, type, url) {
 	$.ajax({
@@ -48,10 +46,6 @@ var getServerStatus = function (id, type, url) {
         dataType: 'jsonp',
         url: url,
         crossDomain: true,
-statusCode: {
-401: function() {
-console.log('401 here!!!');
-}},
 complete: function (data, xhr) {
 console.log(data);
 $('#' + id + ' .' + type).html(getStatusLabel(data.status));
