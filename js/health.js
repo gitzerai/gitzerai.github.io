@@ -51,7 +51,7 @@ var getServerStatus = function (id, type, url) {
 statusCode: {
 401: function() {
 console.log('401 here!!!');
-},
+}},
 complete: function (data, xhr) {
 console.log(data);
 $('#' + id + ' .' + type).html(getStatusLabel(data.status));
