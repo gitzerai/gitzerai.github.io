@@ -47,6 +47,10 @@ var getServerStatus = function (id, type, url) {
         dataType: 'jsonp',
         url: url,
         crossDomain: true,
+statusCode: {
+401: function() {
+console.log('401 here!!!');
+},
 complete: function (data, xhr) {
 console.log(data);
 $('#' + id + ' .' + type).html(getStatusLabel(data.status));
