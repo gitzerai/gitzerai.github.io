@@ -47,10 +47,10 @@ var getServerStatus = function (id, type, url) {
         dataType: 'jsonp',
         url: url,
         crossDomain: true,
-        timeout: 5000
-    }).always(function (data, textStatus, jqXHR) {
-    	$('#' + id + ' .' + type).html(getStatusLabel(data.status));
-    });
+        timeout: 5000,
+complete: function (data, xhr) {
+$('#' + id + ' .' + type).html(getStatusLabel(data.status));
+});
 }
 
 var healthCheck = function () {
