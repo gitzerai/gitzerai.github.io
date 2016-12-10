@@ -47,7 +47,6 @@ var getServerStatus = function (id, type, url) {
         dataType: 'jsonp',
         url: url,
         crossDomain: true,
-        timeout: 5000,
 complete: function (data, xhr) {
 console.log(data);
 $('#' + id + ' .' + type).html(getStatusLabel(data.status));
