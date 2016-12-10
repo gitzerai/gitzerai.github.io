@@ -26,6 +26,7 @@ var getLabel = function (type, label) {
 }
 
 var getStatusLabel = function (statusCode) {
+     statusCode = '&nbsp;';
 	if (statusCode >= 200 && statusCode < 300) {
 		return getLabel('success', statusCode);
 	}
