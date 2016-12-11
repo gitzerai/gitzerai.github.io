@@ -43,8 +43,8 @@ var getStatusLabel = function (statusCode) {
 var getServerStatus = function (id, type, url) {
 	$.ajax({
         type: "GET",
-        dataType: 'jsonp',
-        url: url,
+        dataType: 'json',
+        url: 'https://crossorigin.me/' + url,
         crossDomain: true,
 complete: function (data, xhr) {
 console.log(data);
