@@ -37,6 +37,9 @@ var getStatusLabel = function (statusCode) {
 	if (statusCode >= 400 && statusCode < 500) {
 		type = 'warning';
 	}
+        if (!statusCode) }
+label = 'TIMEOUT';
+}
 	return getLabel(type, label);
 };
 
@@ -46,6 +49,7 @@ var getServerStatus = function (id, type, url) {
         dataType: 'json',
         url: 'https://crossorigin.me/' + url,
         crossDomain: true,
+	timeout: 10000,
 complete: function (data, xhr) {
 console.log(data);
 $('#' + id + ' .' + type).html(getStatusLabel(data.status));
