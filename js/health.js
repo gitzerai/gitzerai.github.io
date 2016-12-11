@@ -37,7 +37,7 @@ var getStatusLabel = function (statusCode) {
 	if (statusCode >= 400 && statusCode < 500) {
 		type = 'warning';
 	}
-        if (!statusCode) }
+        if (!statusCode) {
 label = 'TIMEOUT';
 }
 	return getLabel(type, label);
