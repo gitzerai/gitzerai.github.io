@@ -26,7 +26,7 @@ var getLabel = function (type, label) {
 }
 
 var getStatusLabel = function (statusCode) {
-     label = '&nbsp;';
+     label = statusCode;
 	type = 'danger';
 	if (statusCode >= 200 && statusCode < 300) {
 		type = 'success';
