@@ -128,7 +128,7 @@
     <div id="app" v-cloak>
       <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top" style="justify-content: space-between">
         <a class="navbar-brand" href="#">Slang</a>
-        <a class="avatar" v-if="currentUser" @click="onClickGoProfile">
+        <a class="avatar" v-if="isLoggedIn && currentUser" @click="onClickGoProfile">
           Welcome {{ currentUser.display_name }}!
         </a>
         <a @click="onClickLogout" v-if="isLoggedIn">Logout</a>
