@@ -1,0 +1,750 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/vue-snotify@latest/styles/material.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.4.1/css/all.css" integrity="sha384-5sAR7xN1Nv6T6+dT2mhtzEpVJvfS3NScPQTrOxhwjIuvcA67KV2R5Jz6kr4abQsz" crossorigin="anonymous">
+
+    <style>
+      .conversation {
+        display: flex;
+        flex-direction: column;
+        padding: 10;
+        cursor: pointer;
+      }
+      .conversation.active {
+        background-color: turquoise;
+      }
+      .conversation:hover {
+        background-color: #EEE;
+      }
+      .conversation + .conversation {
+        border-bottom: 1px dotted lightgray;
+      }
+      .col-conv {
+        border-right: 1px solid lightgray;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      .conversations {
+        flex: 1;
+        overflow: scroll;
+      }
+      .chat {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      .chat-header {
+        border-bottom: 1px solid lightgray;
+        padding: 10px 0;
+      }
+      .message-user {
+        font-size: 12px;
+        color: gray;
+        display: flex;
+        justify-content: space-between;
+      }
+      .message-footer {
+        font-size: 10px;
+        color: lightgray;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .conversation-description {
+        font-size: 12px;
+        color: gray;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+      }
+      .message-content {
+        background-color: lightgray;
+        font-size: 14px;
+        padding: 6px 12px;
+        border-radius: 20px;
+      }
+      .messages {
+        flex: 1;
+        overflow: scroll;
+      }
+      .message {
+        display: flex;
+        flex-direction: column;
+        width: 80%;
+        margin-bottom: 10px;
+      }
+      .message.current {
+        float: right;
+        align-self: flex-end;
+      }
+      .message.current .message-content {
+        background-color: turquoise;
+        color: white;
+      }
+      .menu {
+        border-top: 1px solid lightgray;
+        padding-top: 10px;
+      }
+      .row-stretch {
+        height: 100%;
+      }
+      #app {
+        display: flex;
+        height: 100%;
+        padding-top: 80px;
+      }
+      .add-conv a {
+        color: turquoise !important;
+        display: block;
+        border-top: 1px solid lightgray;
+        padding: 10px;
+        cursor: pointer;
+      }
+      .modal {
+        display: block;
+        background-color: rgba(0,0,0,0.2);
+      }
+      .contact {
+        display: block;
+        padding: 10px;
+        cursor: pointer;
+      }
+      .contact.active {
+        background-color: turquoise;
+      }
+      .avatar {
+        color: turquoise;
+      }
+      .contact + .contact {
+        border-top: 1px solid lightgray;
+      }
+      [v-cloak] { display: none; }
+    </style>
+  </head>
+  <body>
+
+    <div id="app" v-cloak>
+      <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top" style="justify-content: space-between">
+        <a class="navbar-brand" href="#">Slang</a>
+        <a class="avatar" v-if="currentUser" @click="onClickGoProfile">
+          Welcome {{ currentUser.display_name }}!
+        </a>
+        <a @click="onClickLogout" v-if="isLoggedIn">Logout</a>
+      </nav>
+      <div class="container text-center login-form" v-if="loginStep === 0">
+        <h1 style="margin-bottom: 30px;">Login / Sign up</h1>
+        <div class="row">
+          <div class="col"></div>
+          <div class="col-2 col-offset-2">
+            <div class="form-group">
+              <label>Country Code</label>
+              <input class="form-control" v-model="phoneCountryCode" maxlength="3" />
+            </div>
+          </div>
+          <div class="col-2">
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input class="form-control" v-model="phoneNumber" maxlength="12" />
+            </div>
+          </div>
+          <div class="col"></div>
+        </div>
+        <a class="btn btn-success" @click="onClickLogin">
+          Login / Sign Up
+        </a>
+      </div>
+      <div class="container text-center login-form" v-if="loginStep === 1">
+        <h1 style="margin-bottom: 30px;">Verify Code</h1>
+        <div class="row">
+          <div class="col"></div>
+          <div class="col-2 col-offset-2">
+            <div class="form-group">
+              <label>Code</label>
+              <input class="form-control" v-model="verificationCode" maxlength="6"/>
+            </div>
+          </div>
+          <div class="col"></div>
+        </div>
+        <a class="btn btn-success" @click="onClickVerifyCode">
+          Verify
+        </a>
+      </div>
+      <div class="container text-center login-form" v-if="loginStep === 2">
+        <h1 style="margin-bottom: 30px;">Edit profile</h1>
+        <div class="row">
+          <div class="col"></div>
+          <div class="col-2 col-offset-2">
+            <div class="form-group">
+              <label>Name</label>
+              <input class="form-control" v-model="currentUser.display_name" />
+            </div>
+            <div class="form-group">
+              <label for="exampleFormControlSelect1">Language</label>
+              <select class="form-control" v-model="currentUser.language_code">
+                <option v-for="language in languages" :value="language">{{ getDisplayLanguage(language) }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="col"></div>
+        </div>
+        <a class="btn btn-success" @click="onClickEditProfile">
+          Save
+        </a>
+      </div>
+      <div class="container" v-if="isLoggedIn">
+        <div class="row row-stretch">
+
+          <div class="col-6 col-conv">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h2>Chats</h2>
+              <a style="color: turquoise" @click="onClickRefreshChats">
+                <i class="fa fa-sync-alt"></i>
+              </a>
+            </div>
+            <div class="conversations">
+              <a class="conversation"
+                v-for="conversation in conversations"
+                @click="onClickConversation(conversation)"
+                :class="{'active': conversation.id === currentConversationId}">
+                <div>{{ conversation.title }}</div>
+                <div class="conversation-description">{{ getConvDescription(conversation) }}</div>
+              </a>
+            </div>
+            <div class="add-conv">
+              <a class="btn" @click="onClickNewChat">New Chat</a>
+            </div>
+          </div>
+
+          <div class="col-6" v-if="currentConversation">
+            <div class="chat">
+              <div class="chat-header">
+                {{ currentConversation.title }}
+              </div>
+              <div class="messages">
+                <div
+                  class="message"
+                  v-for="message in currentConversation.messages"
+                  :class="{'current': isCurrentMessage(message)}">
+                  <div class="message-user">
+                    <span>{{ getUser(message) }}</span>
+                    <span>{{ getMessageTime(message.created_at) }}</span>
+                  </div>
+                  <div class="message-content">
+                    {{ message.content }}
+                  </div>
+                  <div class="message-footer">
+                    {{ getDisplayStatus(message) }}
+                  </div>
+                </div>
+              </div>
+              <div class="menu">
+                <div class="form-group">
+                  <input
+                    class="form-control"
+                    :placeholder="placeholder"
+                    v-model="message"
+                    v-on:keyup="onKeyUpMessage">
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal" v-if="isNewChatModal">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">New Chat</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close" @click="isNewChatModal = false">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <a class="contact" v-for="contact in contacts" @click="onClickSelectContact(contact)" :class="{'active': isContactSelected(contact)}">
+                {{ contact.display_name }}
+              </a>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" @click="onClickCreateChat">Create Chat</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <vue-snotify></vue-snotify>
+
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/vue-snotify@latest/vue-snotify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
+
+    <script type="text/javascript">
+
+      jQuery.fn.scrollToBottom = function() {
+        var $this = $(this)
+        $this.scrollTop($this[0].scrollHeight);
+        return this;
+      };
+
+      window.dvlt = {
+        base64Decode: (str) => {
+          return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+            function toSolidBytes(match, p1) {
+              return String.fromCharCode('0x' + p1);
+          }))
+        },
+        guid: function() {
+          function s4() {
+            return Math.floor((1 + Math.random()) * 0x10000)
+              .toString(16)
+              .substring(1);
+          }
+          return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+        }
+      }
+
+      function initialState() {
+        return {
+          socket: null,
+
+          // Chat Info
+          conversations: [],
+          contacts: [],
+          currentConversationId: null,
+          message: '',
+          isNewChatModal: false,
+          selectedContacts: [],
+          canLoadMoreMessages: false,
+          isLoadingMessages: false,
+
+          // Auth Info
+          currentUserId: null,
+          phoneNumber: null,
+          phoneCountryCode: 1,
+          loginStep: 0,
+          verificationCode: null,
+          authorizationCode: null,
+
+          // Profile info
+          currentUser: {
+            display_name: null,
+            language_code: 'en'
+          },
+          languages: []
+        }
+      }
+
+      new Vue({
+        el: '#app',
+        data: initialState(),
+        methods: {
+          loadUser: function () {
+            this.api('GET', '/users/me', (response) => {
+              this.currentUser = response.data
+              this.currentUserId = response.data.id
+            })
+          },
+          onClickNewChat: function () {
+            this.isNewChatModal = true
+            this.selectedContacts = []
+          },
+          onClickCreateChat: function () {
+            if (this.selectedContacts.length > 0) {
+              const data = {
+                user_ids: this.selectedContacts.map(contact => {
+                  return contact.id
+                })
+              }
+              this.api('POST', '/conversations', (response) => {
+                let conversation = this.getConversation(response.data.id)
+                if (!conversation) {
+                  conversation = response.data
+                  this.conversations.push(conversation)
+                  this.loadCurrentConversation(conversation.id)
+                }
+                else {
+                  this.loadMessages(conversation.id)
+                }
+                this.currentConversationId = response.data.id
+              }, data)
+            }
+            this.isNewChatModal = false
+          },
+          reload: function () {
+            this.loadUser()
+            this.loadConversations()
+            this.loadContacts()
+            this.connect()
+          },
+          onClickRefreshChats: function () {
+            this.loadConversations()
+            this.loadContacts()
+          },
+          connect: function () {
+            if (this.socket) {
+              return
+            }
+            this.socket = io(this.baseWsUrl, {
+              transports: ['websocket'],
+              query: {
+                token: this.accessToken
+              }
+            })
+            this.socket.on('connect', () => {
+              console.log('CONNECTED TO WS!')
+            })
+            this.socket.on('message_delivered', (message) => {
+              this.onMessageDelivered(message)
+            })
+            this.socket.on('conversation_created', (conversation) => {
+              this.onConversationCreated(conversation)
+            })
+            this.socket.on('disconnect', () => {
+              console.log('DISCONNECTED FROM WS!')
+            })
+          },
+          onMessageDelivered: function (message) {
+            const conversation = this.getConversation(message.conversation_id)
+            if (!conversation) {
+              // Conversation doesnt exist yet in the list, reload the list
+              this.loadConversations(this.currentConversationId)
+            }
+            else {
+              const existingMessage = this.getMessage(conversation.id, message.id)
+              if (!existingMessage) {
+                conversation.messages.push(message)
+              }
+              else {
+                Object.assign(existingMessage, message)
+              }
+
+              if (conversation.id === this.currentConversationId) {
+                this.scrollDown()
+              }
+            }
+          },
+          getMessage: function (conversationId, id) {
+            const conversation = this.getConversation(conversationId)
+            return conversation.messages.find(m => {
+              return m.id === id
+            })
+          },
+          onConversationCreated: function(conversation) {
+            this.socket.emit('conversation_join', {
+              conversation_id: conversation.id
+            })
+          },
+          loadConversations: function (selectedConversationId = null) {
+            this.api('GET', '/conversations', (response) => {
+              let conversations = []
+              for (i in response.data) {
+                conversations.push(response.data[i])
+                if (selectedConversationId) {
+                  this.loadCurrentConversation(selectedConversationId)
+                }
+              }
+              this.conversations = conversations
+            })
+          },
+          onClickSelectContact: function (contact) {
+            const contactIndex = this.selectedContacts.findIndex(c => {
+              return c.id === contact.id
+            })
+            if (contactIndex === -1) {
+              this.selectedContacts.push(contact)
+            }
+            else {
+               this.selectedContacts.splice(contactIndex, 1)
+            }
+          },
+          isContactSelected: function (contact) {
+            const matchContact = this.selectedContacts.find(c => {
+              return c.id === contact.id
+            })
+            return matchContact !== undefined
+          },
+          loadContacts: function () {
+            this.api('GET', '/contacts', (response) => {
+              this.contacts = response.data
+            })
+          },
+          loadCurrentConversation: function (conversationId) {
+            this.api('GET', `/conversations/${conversationId}`, (response) => {
+              this.currentConversationId = response.data.id
+              this.loadMessages(conversationId)
+            })
+          },
+          loadMessages: function (conversationId, from = null) {
+            this.isLoadingMessages = true
+            const limit = 10
+            const $messages = $('.messages')
+            let previousScroll = 0
+            if ($messages[0]) {
+              previousScroll = $messages.scrollTop() + $messages[0].scrollHeight;
+            }
+            if (from === null) {
+              this.currentConversation.messages = []
+            }
+
+            let url = `${this.baseUrl}/conversations/${conversationId}/messages?limit=${limit}`
+            if (from) {
+              url += `&from=${from}`
+            }
+
+            this.api('GET', url, (response) => {
+              this.currentConversation.messages.unshift(...response.data)
+              this.canLoadMoreMessages = response.data.length === limit
+              this.isLoadingMessages = false
+              this.registerMessagesEvents()
+              if (from === null) {
+                this.scrollDown()
+              }
+              else if ($messages[0]) {
+                Vue.nextTick(() => {
+                  $messages.scrollTop($messages[0].scrollHeight - previousScroll)
+                })
+              }
+            })
+          },
+          registerMessagesEvents: function () {
+            let app = this
+            Vue.nextTick(() => {
+              $('.messages').on('scroll', function () {
+                if (this.scrollTop === 0 && !app.isLoadingMessages && app.canLoadMoreMessages && app.messages.length > 0) {
+                  app.loadMessages(app.currentConversationId, app.currentConversation.messages[0].id)
+                }
+              })
+            })
+          },
+          scrollDown: function () {
+            Vue.nextTick(() => {
+              $('.messages').scrollToBottom()
+            })
+          },
+          sendMessage: function () {
+            const data = { content: this.message }
+            const tempId = dvlt.guid()
+            const conversationId = this.currentConversationId
+
+            this.currentConversation.messages.push(this.getStorageMessage(tempId, conversationId, this.message))
+            this.message = ''
+
+            this.api('POST', `/conversations/${conversationId}/messages`, (response) => {
+              const message = this.getMessage(conversationId, tempId)
+              if (message) {
+                message.id = response.data.id
+                message.status_code = response.data.status_code
+              }
+            }, data)
+          },
+          getStorageMessage: function (id, conversationId, content) {
+            return {
+              id: id,
+              conversation_id: conversationId,
+              user_id: this.currentUserId,
+              content: content,
+              content_type: 'T',
+              language_code: this.getCurrentConversationUserLanguage(),
+              status_code: 'S'
+            }
+          },
+          onKeyUpMessage: function (e) {
+            if (e.keyCode === 13) {
+              this.sendMessage()
+            }
+          },
+          onClickConversation: function (conversation) {
+            this.loadCurrentConversation(conversation.id)
+          },
+          getUser: function (message) {
+            const conv = this.currentConversation
+            for (let i = 0; i < conv.users.length; i++) {
+              if (message.user_id === conv.users[i].id) {
+                return conv.users[i].display_name
+              }
+            }
+            return 'Unknown'
+          },
+          getMessageTime: function (createdAt) {
+            return moment(createdAt, "YYYY-MM-DDTHH:mm:ss.SSSZ").fromNow()
+          },
+          api: function (method, url, onSuccess, data = {}, onError = null) {
+            const client = axios.create({ baseURL: this.baseUrl })
+            const headers = {
+              'Authorization': `Bearer ${this.accessToken}`
+            }
+            const request = {
+              url,
+              method,
+              headers
+            }
+            if (method === 'POST' || method === 'PUT') {
+              request.data = data
+            }
+            client.request(request).then(onSuccess).catch(onError)
+          },
+          isCurrentMessage: function (message) {
+            return message.user_id === this.currentUserId
+          },
+          onClickLogin: function () {
+            const params = new URLSearchParams()
+            params.append('country_code', this.phoneCountryCode)
+            params.append('phone_number', this.phoneNumber)
+            params.append('grant_type', 'authorization_code')
+
+            axios.post(`${this.baseUrl}/auth/token`, params, {
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${dvlt.base64Decode('key:secret')}`
+              }
+            })
+              .then(response => {
+                this.loginStep = 1
+                this.authorizationCode = response.data.token
+              })
+              .catch(err => {
+                this.$snotify.error(err.response.data.error.message)
+                console.log('ERR LOGGING IN', err.response)
+              })
+          },
+          onClickVerifyCode: function () {
+            const params = new URLSearchParams()
+            params.append('token', this.authorizationCode)
+            params.append('code', this.verificationCode)
+            params.append('grant_type', 'implicit')
+
+            axios.post(`${this.baseUrl}/auth/token`, params, {
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${dvlt.base64Decode('key:secret')}`
+              }
+            })
+              .then(response => {
+                const action = response.data.action
+
+                this.accessToken = response.data.access_token
+                localStorage.setItem('JWT', this.accessToken)
+                this.currentUserId = response.data.user_id
+                if (action === 'login') {
+                  this.loginStep = 3
+                  this.reload()
+                }
+                else {
+                  this.loginStep = 2
+                }
+              })
+              .catch(err => {
+                this.$snotify.error(err.response.data.error.message)
+                console.log('ERR LOGGING IN', err.response)
+              })
+          },
+          onClickEditProfile: function () {
+            this.api('PUT', '/users/me', (response) => {
+              this.loginStep = 3
+              this.reload()
+            }, this.currentUser)
+          },
+          onClickLogout: function () {
+            this.socket.disconnect()
+            this.socket = null
+            localStorage.removeItem('JWT')
+            Object.assign(this.$data, initialState())
+            this.loadAppInfo()
+          },
+          getConversation: function (conversationId) {
+            return this.conversations.find(c => {
+              return c.id === conversationId
+            })
+          },
+          getConvDescription: function (conversation) {
+            if (conversation.messages.length === 0) {
+              return 'No message'
+            }
+            return conversation.messages[conversation.messages.length - 1].content
+          },
+          loadAppInfo: function () {
+            this.api('GET', '/appinfo/web/0.0.1', (response) => {
+              this.languages = response.data.languages
+            })
+          },
+          onClickGoProfile: function () {
+            this.loginStep = 2
+          },
+          getDisplayLanguage: function (language) {
+            switch (language) {
+              case 'en': return 'English'
+              case 'cs': return 'Czech'
+              case 'es': return 'Spanish'
+              case 'pt': return 'Portuguese'
+              case 'ru': return 'Russian'
+              case 'zh': return 'Chinese'
+              case 'it': return 'Italian'
+              case 'pl': return 'Polish'
+              case 'fr': return 'French'
+              case 'de': return 'German'
+              default:
+                return language
+            }
+          },
+          getCurrentConversationUserLanguage: function () {
+            for (let i = 0; i < this.currentConversation.users.length; i++) {
+              if (this.currentConversation.users[i].id === this.currentUserId) {
+                return this.currentConversation.users[i].language_code
+              }
+            }
+            return null
+          },
+          getDisplayStatus(message) {
+            switch (message.status_code) {
+              case 'S': return 'Sent'
+              case 'R': return 'Received'
+              case 'T': return 'Translated'
+              case 'D': return 'Delivered'
+              default:
+                return 'Unknown'
+            }
+          }
+        },
+        computed: {
+          currentConversation: function () {
+            return this.getConversation(this.currentConversationId)
+          },
+          baseUrl: function () {
+            return 'http://localhost:8080'
+          },
+          baseWsUrl: function () {
+            return 'http://localhost:3000'
+          },
+          isLoggedIn: function () {
+            return this.loginStep === 3
+          },
+          placeholder: function () {
+            const lang = this.getCurrentConversationUserLanguage()
+            const displayLang = this.getDisplayLanguage(lang).toLowerCase()
+            return `Type message (in ${displayLang})...`
+          }
+        },
+        mounted: function () {
+          this.loadAppInfo()
+          const accessToken = localStorage.getItem('JWT')
+          if (accessToken) {
+            this.accessToken = accessToken
+            this.loginStep = 3
+            this.reload()
+          }
+        }
+      })
+
+    </script>
+  </body>
+</html>
