@@ -395,6 +395,7 @@
               return
             }
             this.socket = io(this.baseWsUrl, {
+              secure: false,
               transports: ['websocket'],
               query: {
                 token: this.accessToken
@@ -723,7 +724,7 @@
             return window.location.protocol === 'file:' ? 'http://localhost:8080' : 'https://api.slanglab.io'
           },
           baseWsUrl: function () {
-            return window.location.protocol === 'file:' ? 'http://localhost:3000' : 'https://ws.slanglab.io:3000'
+            return window.location.protocol === 'file:' ? 'http://localhost:3000' : 'ws://ws.slanglab.io:3000'
           },
           isLoggedIn: function () {
             return this.loginStep === 3
