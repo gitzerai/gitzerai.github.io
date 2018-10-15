@@ -395,7 +395,6 @@
               return
             }
             this.socket = io(this.baseWsUrl, {
-              rejectUnauthorized: false,
               transports: ['websocket'],
               query: {
                 token: this.accessToken
