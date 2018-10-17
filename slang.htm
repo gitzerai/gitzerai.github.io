@@ -526,7 +526,7 @@
             let app = this
             Vue.nextTick(() => {
               $('.messages').on('scroll', function () {
-                if (this.scrollTop === 0 && !app.isLoadingMessages && app.canLoadMoreMessages && app.messages.length > 0) {
+                if (this.scrollTop === 0 && !app.isLoadingMessages && app.canLoadMoreMessages && app.currentConversation.messages.length > 0) {
                   app.loadMessages(app.currentConversationId, app.currentConversation.messages[0].id)
                 }
               })
