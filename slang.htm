@@ -206,6 +206,7 @@
             <div class="conversations">
               <a class="conversation"
                 v-for="conversation in conversations"
+                :key="conversation.id"
                 @click="onClickConversation(conversation)"
                 :class="{'active': conversation.id === currentConversationId}">
                 <div>{{ conversation.title }}</div>
@@ -226,6 +227,7 @@
                 <div
                   class="message"
                   v-for="message in currentConversation.messages"
+                  :key="message.id"
                   :class="{'current': isCurrentMessage(message)}">
                   <div class="message-user">
                     <span>{{ getUser(message) }}</span>
