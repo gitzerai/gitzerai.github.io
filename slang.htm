@@ -422,7 +422,11 @@
               this.loadConversations(this.currentConversationId)
             }
             else {
-              const existingMessage = this.getMessage(conversation.id, message.id)
+              let existingMessage = this.getMessage(conversation.id, message.id)
+              if (!existingMessage && message.uuid) {
+                existingMessage = this.getMessage(conversation.id, message.uuid)
+              }
+
               if (!existingMessage) {
                 conversation.messages.push(message)
               }
