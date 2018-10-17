@@ -532,18 +532,22 @@
             })
           },
           sendMessage: function () {
-            const data = { content: this.message }
             const tempId = dvlt.guid()
+            const data = {
+              content: this.message,
+              uuid: tempId
+            }
             const conversationId = this.currentConversationId
 
             this.currentConversation.messages.push(this.getStorageMessage(tempId, conversationId, this.message))
             this.message = ''
 
             this.api('POST', `/conversations/${conversationId}/messages`, (response) => {
-              const message = this.getMessage(conversationId, tempId)
+              const data = response.data
+              const message = this.getMessage(conversationId, data.uuid)
               if (message) {
-                message.id = response.data.id
-                message.status_code = response.data.status_code
+                message.id = data.id
+                message.status_code = data.status_code
               }
             }, data)
           },
@@ -571,7 +575,7 @@
             const conv = this.currentConversation
             for (let i = 0; i < conv.users.length; i++) {
               if (message.user_id === conv.users[i].id) {
-                return conv.users[i].display_name
+                return `${conv.users[i].display_name} [${conv.users[i].language_code.toUpperCase()}]`
               }
             }
             return 'Unknown'
