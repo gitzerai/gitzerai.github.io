@@ -581,7 +581,7 @@
             const conv = this.currentConversation
             for (let i = 0; i < conv.users.length; i++) {
               if (message.user_id === conv.users[i].id) {
-                return `${conv.users[i].display_name} [${conv.users[i].language_code.toUpperCase()}]`
+                return `${conv.users[i].display_name} [${conv.users[i].language_code.toUpperCase()}] (${message.id})`
               }
             }
             return 'Unknown'
