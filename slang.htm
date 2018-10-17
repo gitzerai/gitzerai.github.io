@@ -394,7 +394,7 @@
             if (this.socket) {
               return
             }
-            this.socket = io(this.baseWsUrl, {
+            this.socket = io.connect(this.baseWsUrl, {
               transports: ['websocket'],
               query: {
                 token: this.accessToken
@@ -716,14 +716,18 @@
           }
         },
         computed: {
+          isLocalhost() {
+            // return window.location.protocol === 'file:'
+            return false
+          },
           currentConversation: function () {
             return this.getConversation(this.currentConversationId)
           },
           baseUrl: function () {
-            return window.location.protocol === 'file:' ? 'http://localhost:8080' : 'https://api.slanglab.io'
+            return this.isLocalhost ? 'https://localhost:8080' : 'https://api.slanglab.io'
           },
           baseWsUrl: function () {
-            return window.location.protocol === 'file:' ? 'http://localhost:3000' : 'wss://ws.slanglab.io'
+            return this.isLocalhost ? 'wss://localhost:8080' : 'wss://ws.slanglab.io:3000'
           },
           isLoggedIn: function () {
             return this.loginStep === 3
@@ -735,6 +739,8 @@
           }
         },
         mounted: function () {
+          // localStorage.debug = '';
+
           this.loadAppInfo()
           const accessToken = localStorage.getItem('JWT')
           if (accessToken) {
