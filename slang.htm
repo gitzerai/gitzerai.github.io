@@ -50,7 +50,7 @@
         font-size: 10px;
         color: lightgray;
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
       }
       .conversation-description {
         font-size: 12px;
@@ -120,6 +120,11 @@
       .contact + .contact {
         border-top: 1px solid lightgray;
       }
+      .href {
+        color: turquoise !important;
+        text-decoration: underline !important;
+        cursor: pointer;
+      }
       [v-cloak] { display: none; }
     </style>
   </head>
@@ -129,7 +134,7 @@
       <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top" style="justify-content: space-between">
         <a class="navbar-brand" href="#">Slang</a>
         <a class="avatar" v-if="isLoggedIn && currentUser" @click="onClickGoProfile">
-          Welcome {{ currentUser.display_name }}!
+          Welcome {{ currentUser.display_name }} ({{ currentUser.id }})!
         </a>
         <a @click="onClickLogout" v-if="isLoggedIn">Logout</a>
       </nav>
@@ -234,9 +239,14 @@
                     <span>{{ getMessageTime(message.created_at) }}</span>
                   </div>
                   <div class="message-content">
-                    {{ message.content }}
+                    {{ getMessageContent(message) }}
                   </div>
                   <div class="message-footer">
+                    <div>
+                      <a class="href" @click="onClickMessageSwitchLanguage(message)" v-if="message.i18n">
+                        {{ getDisplaySwitch(message) }}
+                      </a>
+                    </div>
                     {{ getDisplayStatus(message) }}
                   </div>
                 </div>
@@ -428,6 +438,7 @@
               }
 
               if (!existingMessage) {
+                message.isSwitched = false
                 conversation.messages.push(message)
               }
               else {
@@ -508,7 +519,11 @@
             }
 
             this.api('GET', url, (response) => {
-              this.currentConversation.messages.unshift(...response.data)
+              const messages = response.data
+              messages.forEach(message => {
+                message.isSwitched = false
+              })
+              this.currentConversation.messages.unshift(...messages)
               this.canLoadMoreMessages = response.data.length === limit
               this.isLoadingMessages = false
               this.registerMessagesEvents()
@@ -681,7 +696,8 @@
             if (conversation.messages.length === 0) {
               return 'No message'
             }
-            return conversation.messages[conversation.messages.length - 1].content
+            let message = conversation.messages[conversation.messages.length - 1]
+            return message.i18n ? message.i18n.content : message.content
           },
           loadAppInfo: function () {
             this.api('GET', '/appinfo/web/0.0.1', (response) => {
@@ -724,12 +740,23 @@
               default:
                 return 'Unknown'
             }
+          },
+          onClickMessageSwitchLanguage(message) {
+            message.isSwitched = !message.isSwitched
+          },
+          getMessageContent(message) {
+            if (message.i18n) {
+              return message.isSwitched ? message.content : message.i18n.content
+            }
+            return message.content
+          },
+          getDisplaySwitch(message) {
+            return message.isSwitched ? `Switch to ${this.getDisplayLanguage(message.i18n.language_code)}` : `Switch to ${this.getDisplayLanguage(message.language_code)}`
           }
         },
         computed: {
           isLocalhost() {
-            // return window.location.protocol === 'file:'
-            return false
+            return window.location.protocol === 'file:'
           },
           currentConversation: function () {
             return this.getConversation(this.currentConversationId)
