@@ -39,6 +39,9 @@
       .chat-header {
         border-bottom: 1px solid lightgray;
         padding: 10px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
       .message-user {
         font-size: 12px;
@@ -125,6 +128,15 @@
         text-decoration: underline !important;
         cursor: pointer;
       }
+      .noselect {
+        -webkit-touch-callout: none; /* iOS Safari */
+          -webkit-user-select: none; /* Safari */
+          -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Firefox */
+              -ms-user-select: none; /* Internet Explorer/Edge */
+                  user-select: none; /* Non-prefixed version, currently
+                                        supported by Chrome and Opera */
+      }
       [v-cloak] { display: none; }
     </style>
   </head>
@@ -180,11 +192,22 @@
         <h1 style="margin-bottom: 30px;">Edit profile</h1>
         <div class="row">
           <div class="col"></div>
-          <div class="col-2 col-offset-2">
-            <div class="form-group">
-              <label>Name</label>
-              <input class="form-control" v-model="currentUser.display_name" />
+          <div class="col-4 col-offset-2">
+            <div class="row">
+              <div class="col-6">
+                <div class="form-group">
+                  <label>First Name</label>
+                  <input class="form-control" v-model="currentUser.first_name" />
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="form-group">
+                  <label>Last Name</label>
+                  <input class="form-control" v-model="currentUser.last_name" />
+                </div>
+              </div>
             </div>
+
             <div class="form-group">
               <label for="exampleFormControlSelect1">Language</label>
               <select class="form-control" v-model="currentUser.language_code">
@@ -198,10 +221,10 @@
           Save
         </a>
       </div>
-      <div class="container" v-if="isLoggedIn">
+      <div class="container-fluid" v-if="isLoggedIn">
         <div class="row row-stretch">
 
-          <div class="col-6 col-conv">
+          <div class="col-4 col-conv">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <h2>Chats</h2>
               <a style="color: turquoise" @click="onClickRefreshChats">
@@ -223,10 +246,15 @@
             </div>
           </div>
 
-          <div class="col-6" v-if="currentConversation">
+          <div class="col-8" v-if="currentConversation">
             <div class="chat">
               <div class="chat-header">
                 {{ currentConversation.title }}
+                <div class="chat-settings">
+                  <a class="href" @click="onClickChatSettings">
+                    <i class="fa fa-cog fa-lg"></i>
+                  </a>
+                </div>
               </div>
               <div class="messages">
                 <div
@@ -242,12 +270,13 @@
                     {{ getMessageContent(message) }}
                   </div>
                   <div class="message-footer">
-                    <div>
-                      <a class="href" @click="onClickMessageSwitchLanguage(message)" v-if="message.i18n">
-                        {{ getDisplaySwitch(message) }}
-                      </a>
-                    </div>
-                    {{ getDisplayStatus(message) }}
+                    <a class="href noselect" @click="onClickMessageSwitchLanguage(message)" v-if="message.i18n">
+                      {{ getDisplaySwitch(message) }}
+                    </a>
+                    <a class="href noselect" @click="onClickVersion(message)" v-if="message.i18n && message.i18n.length > 1">
+                      {{ getDisplayVersion(message) }}
+                    </a>
+                    <span>{{ getDisplayStatus(message) }}</span>
                   </div>
                 </div>
               </div>
@@ -282,6 +311,36 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-primary" @click="onClickCreateChat">Create Chat</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal" v-if="isChatSettingsModal">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Chat Settings</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close" @click="isChatSettingsModal = false">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label>Language</label>
+                <select class="form-control" v-model="currentConversationUserLanguage">
+                  <option v-for="language in languages" :value="language">{{ getDisplayLanguage(language) }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Translator</label>
+                <select class="form-control" v-model="source">
+                  <option v-for="source in sources" :value="source">{{ getDisplaySource(source) }}</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" @click="onClickSaveChatSettings">Save</button>
             </div>
           </div>
         </div>
@@ -333,8 +392,11 @@
           conversations: [],
           contacts: [],
           currentConversationId: null,
+          currentConversationUserLanguage: null,
           message: '',
+          source: 'G',
           isNewChatModal: false,
+          isChatSettingsModal: false,
           selectedContacts: [],
           canLoadMoreMessages: false,
           isLoadingMessages: false,
@@ -349,7 +411,8 @@
 
           // Profile info
           currentUser: {
-            display_name: null,
+            first_name: null,
+            last_name: null,
             language_code: 'en'
           },
           languages: []
@@ -366,9 +429,23 @@
               this.currentUserId = response.data.id
             })
           },
+          onClickChatSettings: function () {
+            this.currentConversationUserLanguage = this.getCurrentConversationUserLanguage()
+            this.isChatSettingsModal = true
+          },
           onClickNewChat: function () {
             this.isNewChatModal = true
             this.selectedContacts = []
+          },
+          onClickSaveChatSettings: function () {
+            const data = {
+              language_code: this.currentConversationUserLanguage
+            }
+            this.api('PUT', `/conversations/${this.currentConversation.id}/users/me`, (response) => {
+              const currentConversationUser = this.getCurrentConversationUser()
+              currentConversationUser.language_code = this.currentConversationUserLanguage
+              this.isChatSettingsModal = false
+            }, data)
           },
           onClickCreateChat: function () {
             if (this.selectedContacts.length > 0) {
@@ -439,6 +516,7 @@
 
               if (!existingMessage) {
                 message.isSwitched = false
+                message.currentVersion = 1
                 conversation.messages.push(message)
               }
               else {
@@ -465,6 +543,10 @@
             this.api('GET', '/conversations', (response) => {
               let conversations = []
               for (i in response.data) {
+                let conversation = response.data[i]
+                if (conversation.messages && conversation.messages.length > 0) {
+                  conversation.messages[0].currentVersion = 1
+                }
                 conversations.push(response.data[i])
                 if (selectedConversationId) {
                   this.loadCurrentConversation(selectedConversationId)
@@ -522,6 +604,7 @@
               const messages = response.data
               messages.forEach(message => {
                 message.isSwitched = false
+                message.currentVersion = 1
               })
               this.currentConversation.messages.unshift(...messages)
               this.canLoadMoreMessages = response.data.length === limit
@@ -555,6 +638,7 @@
           sendMessage: function () {
             const tempId = dvlt.guid()
             const data = {
+              source: this.source,
               content: this.message,
               uuid: tempId
             }
@@ -697,7 +781,7 @@
               return 'No message'
             }
             let message = conversation.messages[conversation.messages.length - 1]
-            return message.i18n ? message.i18n.content : message.content
+            return message.i18n ? this.getMessageI18nContent(message) : message.content
           },
           loadAppInfo: function () {
             this.api('GET', '/appinfo/web/0.0.1', (response) => {
@@ -724,9 +808,13 @@
             }
           },
           getCurrentConversationUserLanguage: function () {
+            const currentConversationUser = this.getCurrentConversationUser()
+            return currentConversationUser ? currentConversationUser.language_code : null
+          },
+          getCurrentConversationUser: function () {
             for (let i = 0; i < this.currentConversation.users.length; i++) {
               if (this.currentConversation.users[i].id === this.currentUserId) {
-                return this.currentConversation.users[i].language_code
+                return this.currentConversation.users[i]
               }
             }
             return null
@@ -744,14 +832,44 @@
           onClickMessageSwitchLanguage(message) {
             message.isSwitched = !message.isSwitched
           },
+          getMessageI18n(message) {
+            return message.i18n.find(localization => {
+              return localization.version === message.currentVersion
+            })
+          },
+          getMessageI18nContent(message) {
+            return this.getMessageI18n(message).content
+          },
           getMessageContent(message) {
             if (message.i18n) {
-              return message.isSwitched ? message.content : message.i18n.content
+              return message.isSwitched ? message.content : this.getMessageI18nContent(message)
             }
             return message.content
           },
           getDisplaySwitch(message) {
-            return message.isSwitched ? `Switch to ${this.getDisplayLanguage(message.i18n.language_code)}` : `Switch to ${this.getDisplayLanguage(message.language_code)}`
+            if (message.isSwitched) {
+              const languageCode = this.getMessageI18n(message).language_code
+              return `Switch to ${this.getDisplayLanguage(languageCode)}`
+            }
+            return `Switch to ${this.getDisplayLanguage(message.language_code)}`
+          },
+          getDisplayVersion(message) {
+            let source = this.getMessageI18n(message).source
+            return `Version: ${message.currentVersion}/${message.i18n.length} (${this.getDisplaySource(source)})`
+          },
+          onClickVersion(message) {
+            message.currentVersion = message.currentVersion === message.i18n.length ? 1 : message.currentVersion + 1
+          },
+          getDisplaySource(source) {
+            switch (source) {
+              case 'A': return 'Amazon'
+              case 'P': return 'Google (P)'
+              case 'M': return 'Microsoft'
+              case 'G': return 'Google'
+              case 'ALL': return 'All'
+              case 'U':
+                return 'Unknown'
+            }
           }
         },
         computed: {
@@ -774,6 +892,9 @@
             const lang = this.getCurrentConversationUserLanguage()
             const displayLang = this.getDisplayLanguage(lang).toLowerCase()
             return `Type message (in ${displayLang})...`
+          },
+          sources: function () {
+            return ['G', 'P', 'A', 'M', 'ALL']
           }
         },
         mounted: function () {
