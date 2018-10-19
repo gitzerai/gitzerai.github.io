@@ -602,6 +602,7 @@
 
             this.api('GET', url, (response) => {
               const messages = response.data
+              console.log('LOADED MESSAGES: ', messages.length)
               messages.forEach(message => {
                 message.isSwitched = false
                 message.currentVersion = 1
@@ -833,12 +834,17 @@
             message.isSwitched = !message.isSwitched
           },
           getMessageI18n(message) {
-            return message.i18n.find(localization => {
+            const i18n = message.i18n.find(localization => {
               return localization.version === message.currentVersion
             })
+            if (!i18n) {
+              console.log('MISSING i18n', message, message.currentVersion)
+            }
+            return i18n
           },
           getMessageI18nContent(message) {
-            return this.getMessageI18n(message).content
+            const i18n = this.getMessageI18n(message)
+            return i18n ? i18n.content : message.content
           },
           getMessageContent(message) {
             if (message.i18n) {
