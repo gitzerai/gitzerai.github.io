@@ -1014,7 +1014,8 @@
             return message.i18n.items[0].version
           },
           getConversationImage(conversation) {
-            return conversation.users[0].avatar
+            const user = conversation.users.find(u => u.id !== this.currentUserId)
+            return user.avatar
           }
         },
         computed: {
