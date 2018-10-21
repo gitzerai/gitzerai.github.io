@@ -8,9 +8,16 @@
     <style>
       .conversation {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         padding: 10;
         cursor: pointer;
+      }
+      .conversation img {
+        border: 2px solid white;
+        border-radius: 50px;
+        height: 45px;
+        width: 45px;
+        margin-right: 10px;
       }
       .conversation.active {
         background-color: turquoise;
@@ -192,7 +199,16 @@
         <h1 style="margin-bottom: 30px;">Edit profile</h1>
         <div class="row">
           <div class="col"></div>
-          <div class="col-4 col-offset-2">
+          <div class="col-lg-4 col-md-6 col-sm-10 col-xs-12">
+            <div class="row">
+              <div class="col">
+                <img :src="currentUser.avatar" class="img-fluid">
+                <div class="form-group">
+                  <label>Select Image</label>
+                  <input type="file" @change="onAvatarChanged" />
+                </div>
+              </div>
+            </div>
             <div class="row">
               <div class="col-6">
                 <div class="form-group">
@@ -217,9 +233,10 @@
           </div>
           <div class="col"></div>
         </div>
-        <a class="btn btn-success" @click="onClickEditProfile">
+        <a class="btn btn-success" @click="onClickEditProfile" v-if="!isUpdating">
           Save
         </a>
+        <div v-else>Updating...</div>
       </div>
       <div class="container-fluid" v-if="isLoggedIn">
         <div class="row row-stretch">
@@ -237,8 +254,11 @@
                 :key="conversation.id"
                 @click="onClickConversation(conversation)"
                 :class="{'active': conversation.id === currentConversationId}">
-                <div>{{ conversation.title }}</div>
-                <div class="conversation-description">{{ getConvDescription(conversation) }}</div>
+                <img :src="getConversationImage(conversation)" class="img-fluid">
+                <div>
+                  <div>{{ conversation.title }}</div>
+                  <div class="conversation-description">{{ getConvDescription(conversation) }}</div>
+                </div>
               </a>
             </div>
             <div class="add-conv">
@@ -270,12 +290,15 @@
                     {{ getMessageContent(message) }}
                   </div>
                   <div class="message-footer">
-                    <a class="href noselect" @click="onClickMessageSwitchLanguage(message)" v-if="message.i18n">
+                    <a class="href noselect" @click="onClickMessageSwitchLanguage(message)" v-if="hasTranslation">
                       {{ getDisplaySwitch(message) }}
                     </a>
-                    <a class="href noselect" @click="onClickVersion(message)" v-if="message.i18n && message.i18n.length > 1">
-                      {{ getDisplayVersion(message) }}
-                    </a>
+                    <div>
+                      <a class="href noselect" @click="onClickVersion(message)" v-if="message.i18n && message.i18n.items.length > 1">{{ getDisplayVersion(message) }}</a>
+                      <a class="href noselect" style="margin-left: 5px; padding-left: 5px;" @click="onClickRequestTranslation(message)" v-if="canRequestTranslation(message)">
+                        More...
+                      </a>
+                    </div>
                     <span>{{ getDisplayStatus(message) }}</span>
                   </div>
                 </div>
@@ -408,14 +431,19 @@
           loginStep: 0,
           verificationCode: null,
           authorizationCode: null,
+          accessToken: null,
+          refreshToken: null,
 
           // Profile info
           currentUser: {
             first_name: null,
             last_name: null,
-            language_code: 'en'
+            language_code: 'en',
+            avatar: null
           },
-          languages: []
+          avatarFile: null,
+          languages: [],
+          isUpdating: false
         }
       }
 
@@ -495,11 +523,47 @@
             this.socket.on('message_delivered', (message) => {
               this.onMessageDelivered(message)
             })
+            this.socket.on('message_translated', (messageLocalization) => {
+              this.onMessageTranslated(messageLocalization)
+            })
             this.socket.on('conversation_created', (conversation) => {
               this.onConversationCreated(conversation)
             })
             this.socket.on('disconnect', () => {
               console.log('DISCONNECTED FROM WS!')
+            })
+          },
+          onMessageTranslated: function (messageLocalization) {
+            const existingMessage = this.getMessage(messageLocalization.conversation_id, messageLocalization.message_id)
+            if (existingMessage) {
+              if (!existingMessage.i18n) {
+                existingMessage.i18n = {
+                  items: []
+                }
+              }
+
+              existingMessage.isSwitched = false
+              existingMessage.currentVersionIndex = 0
+              existingMessage.isRequestingTranslation = false
+              existingMessage.i18n.has_more = messageLocalization.has_more
+
+              const existingLocalization = existingMessage.i18n.items.find(l => l.version === messageLocalization.version)
+              if (!existingLocalization) {
+                existingMessage.i18n.items.unshift(messageLocalization)
+              }
+            }
+          },
+          onClickRequestTranslation: function (message) {
+            message.isRequestingTranslation = true
+            if (!message.i18n || !message.i18n.has_more) {
+              return
+            }
+            const version = this.getNextMessageVersion(message)
+
+            this.api('POST', `/conversations/${message.conversation_id}/messages/${message.id}/localizations`, () => {
+              console.log('Additional translation requested')
+            }, {
+              version: version
             })
           },
           onMessageDelivered: function (message) {
@@ -516,7 +580,8 @@
 
               if (!existingMessage) {
                 message.isSwitched = false
-                message.currentVersion = 1
+                message.currentVersionIndex = 0
+                message.isRequestingTranslation = false
                 conversation.messages.push(message)
               }
               else {
@@ -545,7 +610,7 @@
               for (i in response.data) {
                 let conversation = response.data[i]
                 if (conversation.messages && conversation.messages.length > 0) {
-                  conversation.messages[0].currentVersion = 1
+                  conversation.messages[0].currentVersionIndex = 0
                 }
                 conversations.push(response.data[i])
                 if (selectedConversationId) {
@@ -605,7 +670,8 @@
               console.log('LOADED MESSAGES: ', messages.length)
               messages.forEach(message => {
                 message.isSwitched = false
-                message.currentVersion = 1
+                message.currentVersionIndex = 0
+                message.isRequestingTranslation = false
               })
               this.currentConversation.messages.unshift(...messages)
               this.canLoadMoreMessages = response.data.length === limit
@@ -702,7 +768,17 @@
             if (method === 'POST' || method === 'PUT') {
               request.data = data
             }
-            client.request(request).then(onSuccess).catch(onError)
+            client.request(request)
+              .then(onSuccess)
+              .catch(err => {
+                console.log('API ERR', err.response)
+                if (err && err.response && err.response.status === 401) {
+                  console.log(`API JWT EXPIRED, refreshing with ${this.refreshToken}`)
+                  this.doRefreshToken(() => {
+                    this.api(method, url, onSuccess, data, onError)
+                  })
+                }
+              })
           },
           isCurrentMessage: function (message) {
             return message.user_id === this.currentUserId
@@ -744,7 +820,10 @@
                 const action = response.data.action
 
                 this.accessToken = response.data.access_token
+                this.refreshToken = response.data.refresh_token
+
                 localStorage.setItem('JWT', this.accessToken)
+                localStorage.setItem('JWTRT', this.refreshToken)
                 this.currentUserId = response.data.user_id
                 if (action === 'login') {
                   this.loginStep = 3
@@ -759,11 +838,51 @@
                 console.log('ERR LOGGING IN', err.response)
               })
           },
+          doRefreshToken(onSuccess) {
+            const params = new URLSearchParams()
+            params.append('refresh_token', this.refreshToken)
+            params.append('grant_type', 'refresh_token')
+            axios.post(`${this.baseUrl}/auth/token`, params, {
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${dvlt.base64Decode('key:secret')}`
+              }
+            })
+              .then(response => {
+                const action = response.data.action
+
+                this.accessToken = response.data.access_token
+                this.refreshToken = response.data.refresh_token
+
+                localStorage.setItem('JWT', this.accessToken)
+                localStorage.setItem('JWTRT', this.refreshToken)
+
+                console.log('JWT refreshed!')
+                onSuccess()
+              })
+              .catch(err => {
+                this.$snotify.error(err.response.data.error.message)
+                console.log('ERR REFRESHING TOKEN IN', err.response)
+              })
+          },
           onClickEditProfile: function () {
+            const data = new FormData()
+            const user = this.currentUser
+            data.append('first_name', user.first_name)
+            data.append('last_name', user.last_name)
+            data.append('language_code', user.language_code)
+            if (this.avatarFile) {
+              data.append('file', this.avatarFile)
+            }
+            this.isUpdating = true
             this.api('PUT', '/users/me', (response) => {
               this.loginStep = 3
+              this.isUpdating = false
               this.reload()
-            }, this.currentUser)
+            }, data)
+          },
+          onAvatarChanged: function (e) {
+            this.avatarFile = e.target.files[0]
           },
           onClickLogout: function () {
             this.socket.disconnect()
@@ -781,8 +900,9 @@
             if (conversation.messages.length === 0) {
               return 'No message'
             }
-            let message = conversation.messages[conversation.messages.length - 1]
-            return message.i18n ? this.getMessageI18nContent(message) : message.content
+            const message = conversation.messages[conversation.messages.length - 1]
+            const content = this.getMessageTranslationContent(message)
+            return content || message.content
           },
           loadAppInfo: function () {
             this.api('GET', '/appinfo/web/0.0.1', (response) => {
@@ -833,38 +953,39 @@
           onClickMessageSwitchLanguage(message) {
             message.isSwitched = !message.isSwitched
           },
-          getMessageI18n(message) {
-            const i18n = message.i18n.find(localization => {
-              return localization.version === message.currentVersion
-            })
-            if (!i18n) {
-              console.log('MISSING i18n', message, message.currentVersion)
+          getMessageTranslation(message) {
+            if (!message.i18n) {
+              return undefined
             }
-            return i18n
+            return message.i18n.items[message.currentVersionIndex]
           },
-          getMessageI18nContent(message) {
-            const i18n = this.getMessageI18n(message)
-            return i18n ? i18n.content : message.content
+          getMessageTranslationContent(message) {
+            const trans = this.getMessageTranslation(message)
+            return trans ? trans.content : message.content
           },
           getMessageContent(message) {
-            if (message.i18n) {
-              return message.isSwitched ? message.content : this.getMessageI18nContent(message)
+            const translatedContent = this.getMessageTranslationContent(message)
+            if (!translatedContent) {
+              return message.content
             }
-            return message.content
+            return message.isSwitched ? message.content : translatedContent
           },
           getDisplaySwitch(message) {
             if (message.isSwitched) {
-              const languageCode = this.getMessageI18n(message).language_code
+              const languageCode = this.getMessageTranslation(message).language_code
               return `Switch to ${this.getDisplayLanguage(languageCode)}`
             }
             return `Switch to ${this.getDisplayLanguage(message.language_code)}`
           },
           getDisplayVersion(message) {
-            let source = this.getMessageI18n(message).source
-            return `Version: ${message.currentVersion}/${message.i18n.length} (${this.getDisplaySource(source)})`
+            const trans = this.getMessageTranslation(message)
+            if (!trans) {
+              return
+            }
+            return `Version: ${message.currentVersionIndex + 1}/${message.i18n.items.length} (${this.getDisplaySource(trans.source)})`
           },
           onClickVersion(message) {
-            message.currentVersion = message.currentVersion === message.i18n.length ? 1 : message.currentVersion + 1
+            message.currentVersionIndex = message.currentVersionIndex === message.i18n.items.length - 1 ? 0 : message.currentVersionIndex + 1
           },
           getDisplaySource(source) {
             switch (source) {
@@ -876,6 +997,24 @@
               case 'U':
                 return 'Unknown'
             }
+          },
+          canRequestTranslation(message) {
+            return message.i18n && message.i18n.has_more && !message.isRequestingTranslation
+          },
+          hasTranslation(message) {
+            return this.getMessageTranslation(message) !== undefined
+          },
+          getNextMessageVersion(message) {
+            if (!message || !message.i18n) {
+              return -1
+            }
+            if (message.i18n.items.length === 0) {
+              return 0
+            }
+            return message.i18n.items[0].version
+          },
+          getConversationImage(conversation) {
+            return conversation.users[0].avatar
           }
         },
         computed: {
@@ -910,6 +1049,7 @@
           const accessToken = localStorage.getItem('JWT')
           if (accessToken) {
             this.accessToken = accessToken
+            this.refreshToken = localStorage.getItem('JWTRT')
             this.loginStep = 3
             this.reload()
           }
